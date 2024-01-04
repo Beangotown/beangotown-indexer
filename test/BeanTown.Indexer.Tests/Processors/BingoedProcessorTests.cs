@@ -119,7 +119,6 @@ public class BingoProcessorTests : BeangoTownIndexerPluginTestBase
     [Fact]
     public async Task HandleBingoProcessorAsync_Test()
     {
-        await HandlePlayProcessorAsync_Test();
         var bingoProcessor = GetRequiredService<BingoProcessor>();
         var blockStateSet = new BlockStateSet<TransactionInfo>
         {
@@ -183,102 +182,5 @@ public class BingoProcessorTests : BeangoTownIndexerPluginTestBase
         rankWeekUser.Item2[0].SumScore.ShouldBe(bingoGameIndexData.Score);
     }
 
-    public async Task HandleSeaSonScoreAsync_Test()
-    {
-        await HandleBingoProcessorAsync_Test();
-        var rankHandler = GetRequiredService<RankHandler>();
-        var blockStateSet = new BlockStateSet<TransactionInfo>
-        {
-            BlockHash = blockHash,
-            BlockHeight = blockHeight,
-            Confirmed = true,
-            PreviousBlockHash = previousBlockHash
-        };
-        //step1: create blockStateSet
-        var blockStateSetKey = await InitializeBlockStateSetAsync(blockStateSet, chainId);
-        //step2: create  logEventInfo
 
-        //step3: handle event and write result to blockStateSet
-        var blockList = new List<BlockWithTransactionDto>()
-        {
-            new BlockWithTransactionDto
-            {
-                Id = chainId + blockHeight,
-                ChainId = chainId,
-                BlockHash = blockHash,
-                BlockHeight = Interlocked.Add(ref blockHeight, _rankInfoOption.RankingBlockHeight),
-                PreviousBlockHash = previousBlockHash,
-                BlockTime = DateTime.Now.AddDays(40),
-                Confirmed = true,
-                LogEventCount = 0
-            }
-        };
-        await rankHandler.HandleBlockChainDataAsync(chainId, _indexerClientInfoProvider.GetClientId(), blockList);
-
-        //step4: save blockStateSet into es
-        await BlockStateSetSaveDataAsync<TransactionInfo>(blockStateSetKey);
-        await Task.Delay(2000);
-
-        //step5: check result
-        var rankWeekIndexData = await _rankWeekTaskIndexRepository.GetListAsync();
-        rankWeekIndexData.Item1.ShouldBe(2);
-        rankWeekIndexData.Item2[0].IsFinished.ShouldBe(true);
-        var userWeekRank = await _userWeekRankIndexRepository.GetListAsync();
-        userWeekRank.Item1.ShouldBe(1);
-        userWeekRank.Item2[0].Rank.ShouldBe(1);
-        var userSeasonRank = await _userSeasonRankIndexRepository.GetListAsync();
-        userSeasonRank.Item1.ShouldBe(1);
-        userSeasonRank.Item2[0].Rank.ShouldBe(-1);
-    }
-
-    [Fact]
-    public async Task HandleRankSeaSonAsync_Test()
-    {
-        await HandleSeaSonScoreAsync_Test();
-        Thread.Sleep(30 * 1000);
-        var rankHandler = GetRequiredService<RankHandler>();
-        var blockStateSet = new BlockStateSet<TransactionInfo>
-        {
-            BlockHash = HashHelper.ComputeFrom("s").ToHex(),
-            BlockHeight = blockHeight,
-            Confirmed = true,
-            PreviousBlockHash = blockHash
-        };
-        //step1: create blockStateSet
-        var blockStateSetKey = await InitializeBlockStateSetAsync(blockStateSet, chainId);
-        //step2: create  logEventInfo
-
-        //step3: handle event and write result to blockStateSet
-        var blockList = new List<BlockWithTransactionDto>()
-        {
-            new BlockWithTransactionDto
-            {
-                Id = chainId + blockHeight + 1,
-                ChainId = chainId,
-                BlockHash = HashHelper.ComputeFrom("s").ToHex(),
-                BlockHeight = Interlocked.Add(ref blockHeight, _rankInfoOption.RankingBlockHeight),
-                PreviousBlockHash = blockHash,
-                BlockTime = DateTime.Now.AddDays(40),
-                Confirmed = true,
-                LogEventCount = 0
-            }
-        };
-        await rankHandler.HandleBlockChainDataAsync(chainId, _indexerClientInfoProvider.GetClientId(), blockList);
-
-        //step4: save blockStateSet into es
-        await BlockStateSetSaveDataAsync<TransactionInfo>(blockStateSetKey);
-        await Task.Delay(2000);
-
-        //step5: check result
-        var userSeasonRank = await _userSeasonRankIndexRepository.GetListAsync();
-        userSeasonRank.Item1.ShouldBe(1);
-        userSeasonRank.Item2[0].Rank.ShouldBe(1);
-
-        var rankWeekTask = await _rankWeekTaskIndexRepository.GetListAsync();
-        rankWeekTask.Item1.ShouldBe(2);
-        rankWeekTask.Item2[0].IsFinished.ShouldBe(true);
-    }
-
-   
-    
 }

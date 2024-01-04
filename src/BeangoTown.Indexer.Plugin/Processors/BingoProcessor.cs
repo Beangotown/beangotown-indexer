@@ -52,18 +52,9 @@ public class BingoProcessor : BeangoTownProcessorBase<Bingoed>
         {
             seasonConfigRankIndex = await SaveSeasonInfoAsync(context);
         }
-
-        var gameIndex =
-            await _gameInfoIndexRepository.GetFromBlockStateSetAsync(eventValue.PlayId.ToHex(), context.ChainId);
-        if (gameIndex == null)
-        {
-            _logger.LogWarning("gameInfo not exists {Id} ", eventValue.PlayId.ToHex());
-            return;
-        }
-
         var weekNum = SeasonWeekUtil.GetRankWeekNum(seasonConfigRankIndex, context.BlockTime);
         var seasonId = weekNum > -1 ? seasonConfigRankIndex.Id : null;
-        await SaveGameIndexAsync(gameIndex, eventValue, context, seasonId);
+        await SaveGameIndexAsync(eventValue, context, seasonId);
         await SaveRankWeekUserIndexAsync(eventValue, context, weekNum, seasonId);
     }
 
@@ -99,19 +90,23 @@ public class BingoProcessor : BeangoTownProcessorBase<Bingoed>
         }
     }
 
-    private async Task SaveGameIndexAsync(GameIndex gameIndex, Bingoed eventValue, LogEventContext context,
+    private async Task SaveGameIndexAsync(Bingoed eventValue, LogEventContext context,
         string? seasonId)
     {
         var feeAmount = GetFeeAmount(context.ExtraProperties);
-        
-        gameIndex.SeasonId = seasonId;
-        ObjectMapper.Map(eventValue, gameIndex);
-        gameIndex.BingoTransactionInfo = new TransactionInfoIndex()
+        var gameIndex = new GameIndex
         {
-            TransactionId = context.TransactionId,
-            TriggerTime = context.BlockTime,
-            TransactionFee = feeAmount
+            Id = eventValue.PlayId.ToHex(),
+            CaAddress = AddressUtil.ToFullAddress(eventValue.PlayerAddress.ToBase58(), context.ChainId),
+            SeasonId = seasonId,
+            BingoTransactionInfo = new TransactionInfoIndex()
+            {
+                TransactionId = context.TransactionId,
+                TriggerTime = context.BlockTime,
+                TransactionFee = feeAmount
+            }
         };
+        ObjectMapper.Map(eventValue, gameIndex);
         ObjectMapper.Map(context, gameIndex);
         await _gameInfoIndexRepository.AddOrUpdateAsync(gameIndex);
     }

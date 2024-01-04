@@ -19,13 +19,13 @@ public class BeangoTownIndexerPluginModule : AElfIndexerClientPluginBaseModule<B
         var configuration = serviceCollection.GetConfiguration();
         serviceCollection.AddSingleton<IAElfLogEventProcessor<TransactionInfo>, BingoProcessor>();
         serviceCollection.AddSingleton<IAElfLogEventProcessor<TransactionInfo>, PlayProcessor>();
-        serviceCollection.AddSingleton<IBlockChainDataHandler, RankHandler>();
         serviceCollection.AddSingleton<IBlockChainDataHandler, BeangoTownHandler>();
+        serviceCollection.AddSingleton<IBlockChainDataHandler, RankHandler>();
         Configure<ContractInfoOptions>(configuration.GetSection("ContractInfo"));
         Configure<GameInfoOption>(configuration.GetSection("GameInfo"));
         Configure<RankInfoOption>(configuration.GetSection("RankInfo"));
     }
 
     protected override string ClientId => "AElfIndexer_BeangoTown";
-    protected override string Version => "0515ebd2b0914fddb300968394618d07";
+    protected override string Version => "096d9d13252544c9875d3176d62f4374";
 }
