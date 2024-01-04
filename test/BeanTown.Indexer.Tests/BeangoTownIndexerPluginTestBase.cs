@@ -5,6 +5,7 @@ using AElfIndexer.Client.Providers;
 using AElfIndexer.Grains;
 using AElfIndexer.Grains.State.Client;
 using BeangoTown.Indexer.Orleans.TestBase;
+using BeangoTown.Indexer.Plugin.Processors;
 using BeangoTown.Indexer.Plugin.Tests.Helper;
 using Nethereum.Hex.HexConvertors.Extensions;
 
@@ -18,7 +19,7 @@ public abstract class
     private readonly IBlockStateSetProvider<TransactionInfo> _blockStateSetTransactionInfoProvider;
     private readonly IDAppDataProvider _dAppDataProvider;
     private readonly IDAppDataIndexManagerProvider _dAppDataIndexManagerProvider;
-
+        
     public BeangoTownIndexerPluginTestBase()
     {
         _indexerClientInfoProvider = GetRequiredService<IAElfIndexerClientInfoProvider>();
@@ -26,6 +27,7 @@ public abstract class
         _blockStateSetTransactionInfoProvider = GetRequiredService<IBlockStateSetProvider<TransactionInfo>>();
         _dAppDataProvider = GetRequiredService<IDAppDataProvider>();
         _dAppDataIndexManagerProvider = GetRequiredService<IDAppDataIndexManagerProvider>();
+
     }
 
     protected async Task<string> InitializeBlockStateSetAsync(BlockStateSet<LogEventInfo> blockStateSet, string chainId)
@@ -102,4 +104,18 @@ public abstract class
         };
         return await InitializeBlockStateSetAsync(blockStateSet, logEventContext.ChainId);
     }
+    
+    
+    protected async Task<string> MockTransactionBlockState(LogEventContext logEventContext)
+    {
+        var blockStateSet = new BlockStateSet<TransactionInfo>
+        {
+            BlockHash = logEventContext.BlockHash,
+            BlockHeight = logEventContext.BlockHeight,
+            Confirmed = true,
+            PreviousBlockHash = logEventContext.PreviousBlockHash
+        };
+        return await InitializeBlockStateSetAsync(blockStateSet, logEventContext.ChainId);
+    }
+    
 }

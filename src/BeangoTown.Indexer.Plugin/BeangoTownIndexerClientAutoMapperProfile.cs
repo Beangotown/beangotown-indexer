@@ -1,3 +1,4 @@
+using AElf.Contracts.MultiToken;
 using AElf.CSharp.Core;
 using AElfIndexer.Client.Handlers;
 using AElfIndexer.Grains.State.Client;
@@ -15,6 +16,7 @@ public class BeangoTownIndexerClientAutoMapperProfile : Profile
     {
         CreateMap<LogEventContext, RankSeasonConfigIndex>();
         CreateMap<LogEventContext, GameIndex>();
+        CreateMap<LogEventContext, UserBalanceIndex>();
         CreateMap<LogEventContext, UserWeekRankIndex>();
         CreateMap<BlockInfo, UserWeekRankIndex>().Ignore(destination => destination.Id);
         CreateMap<BlockInfo, UserSeasonRankIndex>().Ignore(destination => destination.Id);
@@ -28,13 +30,17 @@ public class BeangoTownIndexerClientAutoMapperProfile : Profile
             opt => opt.MapFrom(source => source.SumScore));
         CreateMap<GameIndex, GameResultDto>().ForMember(destination => destination.TranscationFee,
             opt => opt.MapFrom(source =>
-                source.PlayTransactionInfo!.TransactionFee.Add(source.BingoTransactionInfo != null
+                (source.PlayTransactionInfo != null ? source.PlayTransactionInfo.TransactionFee : 0).Add(
+                    source.BingoTransactionInfo != null
                     ? source.BingoTransactionInfo.TransactionFee
                     : 0)));
         CreateMap<TransactionInfoIndex, TransactionInfoDto>();
+        CreateMap<UserBalanceIndex, UserBalanceResultDto>();
         CreateMap<RankSeasonConfigIndex, SeasonDto>();
         CreateMap<RankWeekIndex, WeekDto>();
         CreateMap<Bingoed, GameIndex>().ForMember(destination => destination.Score,
             opt => opt.MapFrom(source => Convert.ToInt32(source.Score)));
+        CreateMap<LogEventContext, TransactionChargedFeeIndex>();
+        CreateMap<TransactionFeeCharged, TransactionChargedFeeIndex>();
     }
 }
