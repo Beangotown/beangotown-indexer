@@ -1,14 +1,11 @@
 using AElf;
 using AElf.Client.Extensions;
 using AElf.CSharp.Core.Extension;
-using AElf.Types;
-using AElfIndexer.Block.Dtos;
 using AElfIndexer.Client;
 using AElfIndexer.Client.Handlers;
 using AElfIndexer.Client.Providers;
 using AElfIndexer.Grains.State.Client;
 using BeangoTown.Indexer.Plugin.Entities;
-using BeangoTown.Indexer.Plugin.Handler;
 using BeangoTown.Indexer.Plugin.Processors;
 using BeangoTown.Indexer.Plugin.Tests.Helper;
 using Contracts.BeangoTownContract;
@@ -36,13 +33,6 @@ public class BingoProcessorTests : BeangoTownIndexerPluginTestBase
     private readonly IAElfIndexerClientEntityRepository<UserWeekRankIndex, TransactionInfo>
         _userWeekRankIndexRepository;
 
-    private readonly IAElfIndexerClientEntityRepository<WeekRankTaskIndex, TransactionInfo>
-        _rankWeekTaskIndexRepository;
-
-    private readonly IAElfIndexerClientEntityRepository<UserSeasonRankIndex, TransactionInfo>
-        _userSeasonRankIndexRepository;
-
-    private readonly RankInfoOption _rankInfoOption;
 
     public BingoProcessorTests()
     {
@@ -53,12 +43,6 @@ public class BingoProcessorTests : BeangoTownIndexerPluginTestBase
             GetRequiredService<IAElfIndexerClientEntityRepository<RankSeasonConfigIndex, TransactionInfo>>();
         _userWeekRankIndexRepository =
             GetRequiredService<IAElfIndexerClientEntityRepository<UserWeekRankIndex, TransactionInfo>>();
-        _rankWeekTaskIndexRepository =
-            GetRequiredService<IAElfIndexerClientEntityRepository<WeekRankTaskIndex, TransactionInfo>>();
-        _indexerClientInfoProvider = GetRequiredService<IAElfIndexerClientInfoProvider>();
-        _userSeasonRankIndexRepository =
-            GetRequiredService<IAElfIndexerClientEntityRepository<UserSeasonRankIndex, TransactionInfo>>();
-        _rankInfoOption = GetRequiredService<IOptionsSnapshot<RankInfoOption>>().Value;
 
     }
 

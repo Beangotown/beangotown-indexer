@@ -7,6 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="AElf.Client.Protobuf" Version="1.2.1" />
         <PackageReference Include="AElfIndexer.Client" Version="1.0.0-28" />
     </ItemGroup>
 </Project>

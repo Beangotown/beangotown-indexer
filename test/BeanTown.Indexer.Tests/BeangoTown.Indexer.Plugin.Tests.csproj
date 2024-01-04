@@ -19,5 +19,4 @@
         <ProjectReference Include="..\..\src\BeangoTown.Indexer.Plugin\BeangoTown.Indexer.Plugin.csproj" />
         <ProjectReference Include="..\BeangoTown.Indexer.Orleans.TestBase\BeangoTown.Indexer.Orleans.TestBase.csproj" />
     </ItemGroup>
-
 </Project>
