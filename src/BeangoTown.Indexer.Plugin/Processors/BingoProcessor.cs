@@ -46,6 +46,8 @@ public class BingoProcessor : BeangoTownProcessorBase<Bingoed>
 
     protected override async Task HandleEventAsync(Bingoed eventValue, LogEventContext context)
     {
+        _logger.LogDebug("Bingoed HandleEventAsync BlockHeight:{BlockHeight} TransactionId:{TransactionId}",
+            context.BlockHeight, context.TransactionId);
         var seasonInfo = _gameInfoOption.SeasonInfo;
         RankSeasonConfigIndex seasonConfigRankIndex = null;
         if (!string.IsNullOrEmpty(seasonInfo.Id))
@@ -55,6 +57,8 @@ public class BingoProcessor : BeangoTownProcessorBase<Bingoed>
         var weekNum = SeasonWeekUtil.GetRankWeekNum(seasonConfigRankIndex, context.BlockTime);
         var seasonId = weekNum > -1 ? seasonConfigRankIndex.Id : null;
         await SaveGameIndexAsync(eventValue, context, seasonId);
+        _logger.LogDebug(" SaveGameIndexAsync Success  TransactionId:{TransactionId}",
+            context.TransactionId);
         await SaveRankWeekUserIndexAsync(eventValue, context, weekNum, seasonId);
     }
 
