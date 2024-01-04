@@ -7,3 +7,7 @@ public class WeekRankResultDto
     public List<RankDto>? RankingList { get; set; }
     public RankDto? SelfRank { get; set; }
 }
+
+public class WeekRankRecordDto : WeekRankResultDto
+{
+}

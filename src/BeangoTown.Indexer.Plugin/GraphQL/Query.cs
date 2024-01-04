@@ -23,6 +23,51 @@ public class Query
         };
     }
 
+    [Name("getWeekRankRecords")]
+    public static async Task<WeekRankRecordDto> GetWeekRankRecordsAsync(
+        [FromServices] IAElfIndexerClientEntityRepository<RankSeasonConfigIndex, TransactionInfo> rankSeasonRepository,
+        [FromServices] IAElfIndexerClientEntityRepository<UserWeekRankIndex, TransactionInfo> rankWeekUserRepository,
+        [FromServices] IObjectMapper objectMapper, GetWeekRankDto getWeekRankDto)
+    {
+        var rankRecordDto = new WeekRankRecordDto();
+        var seasonIndex = await rankSeasonRepository.GetAsync(getWeekRankDto.SeasonId);
+        if (seasonIndex == null || getWeekRankDto.SkipCount >= seasonIndex.PlayerWeekShowCount)
+        {
+            return rankRecordDto;
+        }
+
+        var mustQuery = new List<Func<QueryContainerDescriptor<UserWeekRankIndex>, QueryContainer>>();
+        mustQuery.Add(q => q.Term(i => i.Field(f => f.SeasonId).Value(getWeekRankDto.SeasonId)));
+        mustQuery.Add(q => q.Term(i => i.Field(f => f.Week).Value(getWeekRankDto.Week)));
+
+        QueryContainer Filter(QueryContainerDescriptor<UserWeekRankIndex> f) => f.Bool(b => b.Must(mustQuery));
+
+        var result = await rankWeekUserRepository.GetSortListAsync(Filter, null,
+            sortFunc: s => s.Descending(a => Convert.ToInt64(a.SumScore)).Ascending(a => a.UpdateTime)
+            , Math.Min(getWeekRankDto.MaxResultCount, seasonIndex.PlayerWeekShowCount - getWeekRankDto.SkipCount),
+            getWeekRankDto.SkipCount);
+        
+        var rankDtos = new List<RankDto>();
+        foreach (var item in result.Item2)
+        {
+            var rankDto = objectMapper.Map<UserWeekRankIndex, RankDto>(item);
+            rankDtos.Add(rankDto);
+        }
+
+        if (getWeekRankDto.SkipCount >= rankDtos.Count)
+        {
+            rankRecordDto.RankingList = new List<RankDto>();
+        }
+        else
+        {
+            var count = Math.Min(rankDtos.Count - getWeekRankDto.SkipCount,
+                Math.Min(getWeekRankDto.MaxResultCount, seasonIndex.PlayerWeekShowCount - getWeekRankDto.SkipCount));
+            rankRecordDto.RankingList = rankDtos.GetRange(getWeekRankDto.SkipCount, count);
+        }
+
+        return rankRecordDto;
+    }
+
     public static async Task<WeekRankResultDto> GetWeekRank(
         [FromServices] IAElfIndexerClientEntityRepository<RankSeasonConfigIndex, TransactionInfo> rankSeasonRepository,
         [FromServices] IAElfIndexerClientEntityRepository<UserWeekRankIndex, TransactionInfo> rankWeekUserRepository,
@@ -82,6 +127,42 @@ public class Query
 
         return rankResultDto;
     }
+    
+    [Name("getSeasonRankRecords")]
+    public static async Task<SeasonRankRecordDto> GetSeasonRankRecordsAsync(
+        [FromServices] IAElfIndexerClientEntityRepository<RankSeasonConfigIndex, TransactionInfo> rankSeasonRepository,
+        [FromServices]
+        IAElfIndexerClientEntityRepository<UserSeasonRankIndex, TransactionInfo> rankSeasonUserRepository,
+        [FromServices] IObjectMapper objectMapper, GetSeasonRankDto getSeasonRankDto)
+    {
+        var rankRecordDto = new SeasonRankRecordDto();
+        var seasonIndex = await rankSeasonRepository.GetAsync(getSeasonRankDto.SeasonId);
+        if (seasonIndex == null || getSeasonRankDto.SkipCount >= seasonIndex.PlayerSeasonShowCount)
+        {
+            return rankRecordDto;
+        }
+        
+        var mustQuery = new List<Func<QueryContainerDescriptor<UserSeasonRankIndex>, QueryContainer>>();
+        mustQuery.Add(q => q.Term(i => i.Field(f => f.SeasonId).Value(getSeasonRankDto.SeasonId)));
+
+        QueryContainer Filter(QueryContainerDescriptor<UserSeasonRankIndex> f) => f.Bool(b => b.Must(mustQuery));
+
+        var result = await rankSeasonUserRepository.GetSortListAsync(Filter, null,
+            sortFunc: s => s.Descending(a => a.SumScore)
+            , Math.Min(getSeasonRankDto.MaxResultCount, seasonIndex.PlayerSeasonShowCount - getSeasonRankDto.SkipCount),
+            getSeasonRankDto.SkipCount);
+        
+        var rankDtos = new List<RankDto>();
+        foreach (var item in result.Item2)
+        {
+            var rankDto = objectMapper.Map<UserSeasonRankIndex, RankDto>(item);
+            rankDtos.Add(rankDto);
+        }
+
+        rankRecordDto.RankingList = rankDtos;
+
+        return rankRecordDto;
+    }
 
     public static async Task<SeasonRankResultDto> GetSeasonRank(
         [FromServices] IAElfIndexerClientEntityRepository<RankSeasonConfigIndex, TransactionInfo> rankSeasonRepository,
@@ -137,7 +218,14 @@ public class Query
     private static async Task<RankSeasonConfigIndex?> GetRankSeasonConfigIndexAsync(
         IAElfIndexerClientEntityRepository<RankSeasonConfigIndex, TransactionInfo> rankSeasonRepository)
     {
-        var rankSeason = await rankSeasonRepository.GetSortListAsync(null, null,
+        var now = DateTime.UtcNow;
+        var mustQuery = new List<Func<QueryContainerDescriptor<RankSeasonConfigIndex>, QueryContainer>>();
+        mustQuery.Add(q => q.DateRange(i => i.Field(f => f.RankBeginTime).LessThanOrEquals(now)));
+        mustQuery.Add(q => q.DateRange(i => i.Field(f => f.ShowEndTime).GreaterThanOrEquals(now)));
+
+        QueryContainer Filter(QueryContainerDescriptor<RankSeasonConfigIndex> f) => f.Bool(b => b.Must(mustQuery));
+
+        var rankSeason = await rankSeasonRepository.GetSortListAsync(Filter, null,
             sortFunc: s => s.Descending(a => Convert.ToInt64(a.Id))
             , 1, 0
         );
@@ -245,5 +333,47 @@ public class Query
         {
             GameList = objectMapper.Map<List<GameIndex>, List<GameResultDto>>(result.Item2)
         };
+    }
+
+
+    public static async Task<GameBlockHeightDto> GetLatestGameByBlockHeight(
+        [FromServices] IAElfIndexerClientEntityRepository<GameIndex, TransactionInfo> gameIndexRepository,
+        [FromServices] IObjectMapper objectMapper, GetLatestGameDto getLatestGameHisDto)
+    {
+        var mustQuery = new List<Func<QueryContainerDescriptor<GameIndex>, QueryContainer>>();
+        mustQuery.Add(q =>
+            q.Range(i => i.Field(f => f.BingoBlockHeight).GreaterThanOrEquals(getLatestGameHisDto.BlockHeight)));
+        QueryContainer Filter(QueryContainerDescriptor<GameIndex> f) => f.Bool(b => b.Must(mustQuery));
+
+        var result = await gameIndexRepository.GetSortListAsync(Filter, null,
+            sortFunc: s => s.Descending(a => a.BingoBlockHeight), 1
+        );
+        GameBlockHeightDto gameBlockHeightDto = new GameBlockHeightDto();
+        if (result.Item1 >= 1)
+        {
+            var latestGame = result.Item2[0];
+            gameBlockHeightDto.BingoBlockHeight = latestGame.BingoBlockHeight;
+            gameBlockHeightDto.SeasonId = latestGame.SeasonId;
+            gameBlockHeightDto.LatestGameId = latestGame.Id;
+            gameBlockHeightDto.BingoTime = latestGame.BingoTransactionInfo.TriggerTime;
+            var countQuery = new List<Func<QueryContainerDescriptor<GameIndex>, QueryContainer>>();
+            countQuery.Add(q => q.Term(i => i.Field(f => f.BingoBlockHeight).Value(latestGame.BingoBlockHeight)));
+            QueryContainer CountFilter(QueryContainerDescriptor<GameIndex> f) => f.Bool(b => b.Must(countQuery));
+            var countResponse = await gameIndexRepository.CountAsync(CountFilter);
+            gameBlockHeightDto.GameCount = countResponse.Count;
+            return gameBlockHeightDto;
+        }
+
+        gameBlockHeightDto.BingoBlockHeight = getLatestGameHisDto.BlockHeight;
+        return gameBlockHeightDto;
+
+    }
+
+    public static async Task<SeasonDto> GetSeasonConfigAsync(
+        [FromServices] IAElfIndexerClientEntityRepository<RankSeasonConfigIndex, TransactionInfo> repository,
+        [FromServices] IObjectMapper objectMapper, GetSeasonDto getSeasonDto)
+    {
+        var result = await repository.GetAsync(getSeasonDto.SeasonId);
+        return objectMapper.Map<RankSeasonConfigIndex, SeasonDto>(result);
     }
 }
